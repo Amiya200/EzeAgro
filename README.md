@@ -13,7 +13,9 @@ EzeAgro is an innovative smart farming solution that leverages the power of IoT 
 ## Project Images 📸
 
 <img src="Images/Gas Sensor (2).png"></a>
-[View 3D Model](images/lazer%20fencing.stl)
+<a href="Images/lazer fencing.stl">View 3D model</a>
+
+
 
 ## Dependencies 🛠️
 
