@@ -1,0 +1,102 @@
+const int ldrPin1 = A0;      // LDR pin 1 connected to analog pin A0
+const int ldrPin2 = A1;      // LDR pin 2 connected to analog pin A1
+const int buzzerPin = 9;     // Buzzer pin connected to digital pin 9
+const int numSamples = 5;    // Number of samples for threshold calculation
+
+int ldrValues1[numSamples];  // Array to store LDR values for sensor 1
+int ldrValues2[numSamples];  // Array to store LDR values for sensor 2
+int threshold1 = 0;          // Threshold value for sensor 1
+int threshold2 = 0;          // Threshold value for sensor 2
+
+int X;
+int Y;
+
+
+void setup() {
+  pinMode(buzzerPin, OUTPUT);
+  Serial.begin(9600);       // Initialize serial communication
+  calibrateThresholds();    // Calibrate the threshold values
+}
+
+void loop() {
+  int ldrValue1 = analogRead(ldrPin1); // Read LDR value for sensor 1
+  int ldrValue2 = analogRead(ldrPin2); // Read LDR value for sensor 2
+
+  // Check if the LDR value is below the threshold for sensor 1
+  X = threshold1 + 150;
+  if (ldrValue1 < X) {
+    // Trigger the buzzer
+    digitalWrite(buzzerPin, HIGH);
+    delay(100);  // Buzzer on time
+    digitalWrite(buzzerPin, LOW);
+    delay(100);  // Buzzer off time
+  }
+
+  // Check if the LDR value is below the threshold for sensor 2
+  Y = threshold2 + 150;
+  if (ldrValue2 < Y) {
+    // Trigger the buzzer
+    digitalWrite(buzzerPin, HIGH);
+    delay(100);  // Buzzer on time
+    digitalWrite(buzzerPin, LOW);
+    delay(100);  // Buzzer off time
+  }
+
+  // Print LDR values for debugging
+  Serial.print("LDR Value 1: ");
+  Serial.println(ldrValue1);
+  Serial.print("LDR Value 2: ");
+  Serial.println(ldrValue2);
+
+  delay(100); // Adjust the delay as needed
+}
+
+void calibrateThresholds() {
+  // Calibrate threshold for sensor 1
+  for (int i = 0; i < numSamples; i++) {
+    ldrValues1[i] = analogRead(ldrPin1);
+    delay(10);  // Delay between readings
+  }
+
+  // Sort the array for sensor 1
+  for (int i = 0; i < numSamples - 1; i++) {
+    for (int j = i + 1; j < numSamples; j++) {
+      if (ldrValues1[i] > ldrValues1[j]) {
+        int temp = ldrValues1[i];
+        ldrValues1[i] = ldrValues1[j];
+        ldrValues1[j] = temp;
+      }
+    }
+  }
+
+  // Calculate the median value for sensor 1
+  threshold1 = ldrValues1[numSamples / 2];
+
+  // Print the calibrated threshold value for sensor 1
+  Serial.print("Calibrated Threshold 1: ");
+  Serial.println(threshold1);
+
+  // Calibrate threshold for sensor 2
+  for (int i = 0; i < numSamples; i++) {
+    ldrValues2[i] = analogRead(ldrPin2);
+    delay(10);  // Delay between readings
+  }
+
+  // Sort the array for sensor 2
+  for (int i = 0; i < numSamples - 1; i++) {
+    for (int j = i + 1; j < numSamples; j++) {
+      if (ldrValues2[i] > ldrValues2[j]) {
+        int temp = ldrValues2[i];
+        ldrValues2[i] = ldrValues2[j];
+        ldrValues2[j] = temp;
+      }
+    }
+  }
+
+  // Calculate the median value for sensor 2
+  threshold2 = ldrValues2[numSamples / 2];
+
+  // Print the calibrated threshold value for sensor 2
+  Serial.print("Calibrated Threshold 2: ");
+  Serial.println(threshold2);
+}

@@ -1,0 +1,219 @@
+#include <Arduino.h>
+#if defined(ESP32)
+#include <WiFi.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#endif
+#include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
+
+
+float pH_value;
+float calibration_value = 21.34 - 0.9;
+
+#define WIFI_SSID "Mi10i"
+#define WIFI_PASSWORD "123456pk#"
+
+#define API_KEY "AIzaSyAgGRwbMMcDLKqDwyHjBcPkqby55xqE7IY" // Replace with your Firebase project API Key
+#define DATABASE_URL "https://ezeagros-default-rtdb.firebaseio.com/"
+
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+
+bool signupOK = false;
+
+int s0 = D3;
+int s1 = D4;
+int s2 = D5;
+int s3 = D6;
+int out = D7;
+
+#define PH_Pin A0
+float Po;
+float px;
+
+
+// Define variables for color measurement
+int red = 0;
+int blue = 0;
+int green = 0;
+
+// Define variables for calculating color difference
+int emitted = 0;
+int reflected = 0;
+int differenceRed = 0;
+int differenceBlue = 0;
+int differenceGreen = 0;
+String nitrogen_content =" ";
+String Posphorous_content =" ";
+String Potassium_content =" ";
+void setup() {
+  pinMode(PH_Pin, INPUT);
+  pinMode(s0, OUTPUT);
+  pinMode(s1, OUTPUT);
+  pinMode(s2, OUTPUT);
+  pinMode(s3, OUTPUT);
+  pinMode(out, INPUT);
+
+  // Set frequency scaling to 20%
+  digitalWrite(s0, HIGH);
+  digitalWrite(s1, LOW);
+  Serial.begin(115200);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(300);
+  }
+  Serial.println();
+  Serial.print("Connected with IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+
+  if (Firebase.signUp(&config, &auth, "", "")) {
+    Serial.println("Sign-up successful");
+    signupOK = true;
+  } else {
+    Serial.printf("Sign-up failed: %s\n", config.signer.signupError.message.c_str());
+  }
+
+  config.token_status_callback = tokenStatusCallback;
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+  // put your setup code here, to run once:
+
+}
+
+void loop() {
+
+  int phval = 0;
+  unsigned long int avgval;
+  int buffer_arr[10],temp;
+  float ph_act;
+
+  
+
+  // Reading pH sensor values
+  for(int i=0; i<10; i++) { 
+    buffer_arr[i] = analogRead(PH_Pin); // Change A0 to the appropriate pin on your NodeMCU
+    delay(30);
+  }
+  // Sorting buffer_arr
+  for(int i=0; i<9; i++) {
+    for(int j=i+1; j<10; j++) {
+      if(buffer_arr[i] > buffer_arr[j]) {
+        temp = buffer_arr[i];
+        buffer_arr[i] = buffer_arr[j];
+        buffer_arr[j] = temp;
+      }
+    }
+  }
+  // Calculating average value
+  avgval = 0;
+  for(int i=2; i<8; i++)
+    avgval += buffer_arr[i];
+  // Calculating pH value
+  float volt = (float)avgval * 3.3 / 1024 / 6; 
+  ph_act = -5.70 * volt + calibration_value;
+  // Printing pH value to serial monitor
+  Serial.println("pH Val: ");
+  Serial.print(ph_act);
+
+  delay(2000);
+
+
+  digitalWrite(s2, LOW);
+  digitalWrite(s3, LOW);
+  emitted = pulseIn(out, LOW);
+
+  // Measure the reflected color for red
+  digitalWrite(s2, HIGH);
+  digitalWrite(s3, LOW);
+  reflected = pulseIn(out, LOW);
+  differenceRed = emitted - reflected;
+  if (differenceRed>8){
+    Serial.println("High Nitrogen");
+    nitrogen_content = "High Nitrogen";
+  }
+  else if (4<differenceRed<=7 ){
+    Serial.println("Medium Nitrogen");
+    nitrogen_content = "Medium Nitrogen";
+
+  }else {
+    Serial.println("Low Nitrogen");
+    nitrogen_content = "Low Nitrogen";
+  }
+
+  // Measure t  he reflected color for blue
+  digitalWrite(s2, LOW);
+  digitalWrite(s3, HIGH);
+  reflected = pulseIn(out, LOW);
+  differenceBlue = emitted - reflected ;
+  if (differenceBlue>8){
+    Serial.println("High Phosphorus");
+    Posphorous_content = "High Phosphorus";
+  }
+  else if (4<differenceBlue<=7 ){
+    Serial.println("Medium Phosphorus");
+    Posphorous_content = "Medium Phosphorus";
+
+  }else {
+    Serial.println("Low Phosphorus");
+    Posphorous_content = "Low Phosphorus";
+  }
+  // Measure the reflected color for green
+  digitalWrite(s2, HIGH);
+  digitalWrite(s3, HIGH);
+  reflected = pulseIn(out, LOW);
+  differenceGreen = emitted - reflected;
+  if (differenceGreen>8){
+    Serial.println("High Potassium");
+    Potassium_content = "High Potassium";
+    
+  }
+  else if (4<differenceGreen<=7 ){
+    Serial.println("Medium Potassium");
+    Potassium_content = "Medium Potassium";
+
+  }else {
+    Serial.println("Low Potassium");
+    Potassium_content = "Low Potassium";
+  }
+
+   if (Firebase.ready() && signupOK) {
+    if (Firebase.RTDB.setString(&fbdo, "/Nitrogen", nitrogen_content)) {
+
+    } else {
+      Serial.println("FAILED");
+      Serial.println("REASON: " + fbdo.errorReason());
+    }
+
+    if (Firebase.RTDB.setString(&fbdo, "/Phosphorous", Posphorous_content)) {
+    
+    } else {
+      Serial.println("FAILED");
+      Serial.println("REASON: " + fbdo.errorReason());
+    }
+    if (Firebase.RTDB.setString(&fbdo, "/Potassium",Potassium_content)) {
+  
+    } else {
+      Serial.println("FAILED");
+      Serial.println("REASON: " + fbdo.errorReason());
+    }
+    if (Firebase.RTDB.setFloat(&fbdo, "/pH_Value", ph_act)) {
+      Serial.print("pH_Value: ");
+      Serial.println(px);
+    } else {
+      Serial.println("FAILED");
+      Serial.println("REASON: " + fbdo.errorReason());
+    }
+  }
+  Serial.println("");
+  delay(3000);
+
+}
