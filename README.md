@@ -1,6 +1,6 @@
 # EzeAgro: A Smart Farming Solution Using IoT 🌱
 
-"EzeAgro presents a pioneering smart farming solution, harnessing IoT technology to transform agriculture. Our platform offers real-time monitoring and automation, guaranteeing optimal yields and promoting sustainable farming practices—a fruitful innovation for Indian farmers."
+EzeAgro presents a pioneering smart farming solution, harnessing IoT technology to transform agriculture. Our platform offers real-time monitoring and automation, guaranteeing optimal yields and promoting sustainable farming practices—a fruitful innovation for Indian farmers.
 
 ## Key Features 🚜
 
